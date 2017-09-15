@@ -1,0 +1,10 @@
+2232303df7a829c6cccdb95e6d7f2ff7 *DESCRIPTION
+155eae0c063b036938a9caf10e81d787 *NAMESPACE
+ff7768c651628d99b31dde36edb4af03 *R/MFT.m_est.R
+87f470687f1be1bf580d0ef7dc63a4d3 *R/MFT.mean.R
+a3cb9aefdd0b1eabfc6a65ee1d4ffb63 *R/MFT.rate.R
+80513c197f1e87b3c2733062c6e06be1 *R/MFT.variance.R
+a747c8e25b9b6e5b146a648217fce685 *man/MFT.m_est.Rd
+9e74505821bcd3ef80039c916907bd07 *man/MFT.mean.Rd
+f01830fe74b2933399e64666e96de5c3 *man/MFT.rate.Rd
+b47b12a2afe4aaf3ff3d9e9ba9d746af *man/MFT.variance.Rd
