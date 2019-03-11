@@ -4,20 +4,15 @@
 \alias{MFT.rate}
 \title{MFT.rate}
 \usage{
-MFT.rate(Phi, m = 0, rescale = TRUE, cutout = TRUE, autoset.d_H = TRUE,
-  S = NULL, E = NULL, H = NULL, d = NULL, alpha = 0.05, sim = 10000,
-  method = "asymptotic", Q = NA, blocksize = NA, perform.CPD = TRUE,
-  plot.CPD = TRUE, print.output = TRUE, col = NULL, ylab1 = NULL,
-  ylab2 = NULL, cex.legend = 1.2, cex.diamonds = 1.4, main = TRUE,
-  plot.Q = TRUE, plot.M = TRUE, plot.h = TRUE, plot.rate = FALSE,
-  plot.cp = FALSE, breaks = NULL)
+MFT.rate(Phi, m = 0, cutout = TRUE, autoset.d_H = TRUE, S = NULL,
+  E = NULL, d = NULL, H = NULL, alpha = 0.05,
+  method = "asymptotic", sim = 10000, rescale = FALSE, Q = NA,
+  blocksize = NA, perform.CPD = TRUE, print.output = TRUE)
 }
 \arguments{
 \item{Phi}{numeric vector of increasing events, input point process}
 
-\item{m}{non-negative integer, dependence parameter: serial corellation up to order m is respected for the estimation of rho}
-
-\item{rescale}{logical, if TRUE statistic G is rescaled to statistic R}
+\item{m}{non-negative integer, dependence parameter: serial corellation rho up to order m estimated}
 
 \item{cutout}{logical, if TRUE for every point, for which the estimated rho becomes negative, the h-neighborhood of G (resp. R) is set to zero. This might only occur, if m > 0}
 
@@ -27,15 +22,17 @@ MFT.rate(Phi, m = 0, rescale = TRUE, cutout = TRUE, autoset.d_H = TRUE,
 
 \item{E}{numeric, end of time interval, default: Smallest multiple of d that lies beyond max(Phi), needs E > S.}
 
-\item{H}{vector, window set H, all elements must be increasing ordered multiples of d, the smallest element must be >= d and the largest =< (T/2). H is automatically set if autoset.d_H = TRUE}
-
 \item{d}{numeric, > 0, step size delta at which processes are evaluated. d is automatically set if autoset.d_H = TRUE}
+
+\item{H}{vector, window set H, all elements must be increasing ordered multiples of d, the smallest element must be >= d and the largest =< (T/2). H is automatically set if autoset.d_H = TRUE}
 
 \item{alpha}{numeric, in (0,1), significance level}
 
+\item{method}{either "asymptotic", "bootstrap" or "fixed", defines how threshold Q is derived, default: "asymptotic", If "asymptotic": Q is derived by simulation of limit process L (Brownian motion); possible set number of simulations (sim), If "bootstrap": Q is derived by (Block)-Bootstrapping; possibly set number of simulations (sim) and blocksize (blocksize), If "fixed": Q may be set manually (Q)}
+
 \item{sim}{integer, > 0, No of simulations of limit process (for approximation of Q), default = 10000}
 
-\item{method}{either "asymptotic", "bootstrap" or "fixed", defines how threshold Q is derived, default: "asymptotic", If "asymptotic": Q is derived by simulation of limit process L (Brownian motion); possible set number of simulations (sim), If "bootstrap": Q is deried by (Block)-Bootstrapping; possibly set number of simulations (sim) and blocksize (blocksize), If "fixed": Q may be set automatically (Q)}
+\item{rescale}{logical, if TRUE statistic G is rescaled to statistic R, default = FALSE}
 
 \item{Q}{numeric, rejection threshold, default: Q is simulated according to sim and alpha.}
 
@@ -43,51 +40,29 @@ MFT.rate(Phi, m = 0, rescale = TRUE, cutout = TRUE, autoset.d_H = TRUE,
 
 \item{perform.CPD}{logical, if TRUE change point detection algorithm is performed}
 
-\item{plot.CPD}{logical, if TRUE CPD-scenario is plotted. Only active if perform.CPD == TRUE}
-
 \item{print.output}{logical, if TRUE results are printed to the console}
-
-\item{col}{"gray" or vector of colors of length(H). Colors for (R_ht) plot, default: NULL -> rainbow colors from blue to red.}
-
-\item{ylab1}{character, ylab for 1. graphic}
-
-\item{ylab2}{character, ylab for 2. graphic}
-
-\item{cex.legend}{numeric, size of annotations in plot}
-
-\item{cex.diamonds}{numeric, size of diamonds that indicate change points}
-
-\item{main}{logical, indicates if title and subtitle are plotted}
-
-\item{plot.Q}{logical, indicates if rejection threshold Q is plotted}
-
-\item{plot.M}{logical, indicates if test statistic M is plotted}
-
-\item{plot.h}{logical, indicates if a legend for the window set H is plotted}
-
-\item{plot.rate}{logical, indicates if a legend of estimated rates is plotted}
-
-\item{plot.cp}{logical, indicates if a legend of detected CPs is plotted}
-
-\item{breaks}{integer, > 0, number of breaks in rate histogram}
 }
 \value{
 invisible
 \item{M}{test statistic}
 \item{Q}{rejection threshold}
+\item{method}{how threshold Q was derived, see 'Arguments' for detailed description}
 \item{sim}{number of simulations of the limit process (approximation of Q)}
 \item{blocksize}{size of blocks (number of life times) for bootstrapping (approximation of Q)}
 \item{rescale}{states whether statistic G is rescaled to R}
 \item{m}{order of respected serial correlation (m-dependence)}
 \item{CP}{set of change points estmated by the multiple filter algorithm, increasingly ordered in time}
 \item{rate}{estimated mean rates between adjacent change points}
-\item{SWD}{sets of change points estimated from preprocessing single window detections}
 \item{S}{start of time interval}
 \item{E}{end of time interval}
+\item{Tt}{length of time interval}
 \item{H}{window set}
 \item{d}{step size delta at which processes were evaluated}
 \item{alpha}{significance level}
-\item{cutout}{states whether cutout was used (see arguments)}
+\item{cutout}{states whether cutout was used (see 'Arguments')}
+\item{perform.CPD}{logical, if TRUE change point detection algorithm was performed}
+\item{tech.var}{list of technical variables with processes Phi and G_ht or R_ht}
+\item{type}{type of MFT which was performed: "rate"}
 }
 \description{
 The multiple filter test for rate change detection in point processes on the line.
@@ -101,7 +76,8 @@ Phi2 <- runif(rpois(1,lambda=380),250,600)
 Phi3 <- runif(rpois(1,lambda=200),600,680)
 Phi4 <- runif(rpois(1,lambda=400),680,1000)
 Phi  <- sort(c(Phi1,Phi2,Phi3,Phi4)) 
-MFT.rate(Phi,breaks=30)
+mft  <- MFT.rate(Phi)
+plot(mft)
 
 
 }
@@ -115,7 +91,7 @@ Multi-scale detection of rate changes in spike trains with weak dependencies. Jo
 <doi:10.1007/s10827-016-0635-3>
 }
 \seealso{
-\code{\link{MFT.m_est}, \link{MFT.variance}, \link{MFT.mean}}
+\code{\link{MFT.variance}, \link{MFT.m_est}, \link{plot.MFT}, \link{summary.MFT}, \link{MFT.mean}, \link{MFT.peaks}}
 }
 \author{
 Michael Messer, Stefan Albert, Solveig Plomer and Gaby Schneider

@@ -4,96 +4,75 @@
 \alias{MFT.mean}
 \title{MFT.mean}
 \usage{
-MFT.mean(Y, rescale = TRUE, autoset.H = TRUE, S = NULL, E = NULL,
-  H = NULL, alpha = 0.05, sim = 10000, method = "asymptotic", Q = NA,
-  perform.CPD = TRUE, print.output = TRUE, plot.CPD = TRUE, col = NULL,
-  ylab1 = NULL, ylab2 = NULL, cex.legend = 1.2, cex.diamonds = 1.4,
-  main = TRUE, plot.Q = TRUE, plot.M = TRUE, plot.h = TRUE,
-  plot.mean = FALSE, plot.cp = FALSE, plot.process = TRUE)
+MFT.mean(X, autoset.H = TRUE, S = NULL, E = NULL, H = NULL,
+  alpha = 0.05, method = "asymptotic", sim = 10000,
+  rescale = FALSE, Q = NA, perform.CPD = TRUE, print.output = TRUE)
 }
 \arguments{
-\item{Y}{numeric vector, input sequence of random variables.}
-
-\item{rescale}{logical, if TRUE statistic G is rescaled to statistic R}
+\item{X}{numeric vector, input sequence of random variables}
 
 \item{autoset.H}{logical, automatic choice of window size H}
 
-\item{S}{numeric, start of time interval, default: Smallest multiple of d that lies beyond min(Phi)}
+\item{S}{numeric, start of time interval, default: NULL, if NULL then 1 is chosen}
 
-\item{E}{numeric, end of time interval, default: Smallest multiple of d that lies beyond max(Phi), needs E > S.}
+\item{E}{numeric, end of time interval, default: NULL, if NULL then length(X) is chosen, needs E > S.}
 
-\item{H}{vector, window set H, all elements must be increasing ordered multiples of d, the largest element must be =< (T/2). H is automatically set if autoset.H = TRUE}
+\item{H}{vector, window set H, all elements must be increasing, the largest element must be =< (T/2). H is automatically set if autoset.H = TRUE}
 
 \item{alpha}{numeric, in (0,1), significance level}
 
+\item{method}{either "asymptotic" or "fixed", defines how threshold Q is derived, default: "asymptotic", If "asymptotic": Q is derived by simulation of limit process L (Brownian motion); possible set number of simulations (sim), If "fixed": Q may be set manually (Q)}
+
 \item{sim}{integer, > 0, No of simulations of limit process (for approximation of Q), default = 10000}
 
-\item{method}{either "asymptotic" or "fixed", defines how threshold Q is derived, default: "asymptotic", If "asymptotic": Q is derived by simulation of limit process L (Brownian motion); possible set number of simulations (sim), If "fixed": Q may be set automatically (Q)}
+\item{rescale}{logical, if TRUE statistic G is rescaled to statistic R, default = FALSE}
 
 \item{Q}{numeric, rejection threshold, default: Q is simulated according to sim and alpha.}
 
 \item{perform.CPD}{logical, if TRUE change point detection algorithm is performed}
 
 \item{print.output}{logical, if TRUE results are printed to the console}
-
-\item{plot.CPD}{logical, if TRUE CPD-scenario is plotted. Only active if perform.CPD == TRUE}
-
-\item{col}{"gray" or vector of colors of length(H). Colors for (R_ht) plot, default: NULL -> rainbow colors from blue to red.}
-
-\item{ylab1}{character, ylab for 1. graphic}
-
-\item{ylab2}{character, ylab for 2. graphic}
-
-\item{cex.legend}{numeric, size of annotations in plot}
-
-\item{cex.diamonds}{numeric, size of diamonds that indicate change points}
-
-\item{main}{logical, indicates if title and subtitle are plotted}
-
-\item{plot.Q}{logical, indicates if rejection threshold Q is plotted}
-
-\item{plot.M}{logical, indicates if test statistic M is plotted}
-
-\item{plot.h}{logical, indicates if a legend for the window set H is plotted}
-
-\item{plot.mean}{logical, indicates if a legend of estimated rates is plotted}
-
-\item{plot.cp}{logical, indicates if a legend of detected CPs is plotted}
-
-\item{plot.process}{logical, indicates if there should be a plot of Y as second graphic.}
 }
 \value{
 invisible
 \item{M}{test statistic}
 \item{Q}{rejection threshold}
+\item{method}{how threshold Q was derived, see 'Arguments' for detailed description}
 \item{sim}{number of simulations of the limit process (approximation of Q)}
+\item{rescale}{states whether statistic G is rescaled to R}
 \item{CP}{set of change points estmated by the multiple filter algorithm, increasingly ordered in time}
-\item{rate}{estimated mean values between adjacent change points}
-\item{SWD}{sets of change points estimated from preprocessing single window detections}
+\item{means}{estimated mean values between adjacent change points}
 \item{S}{start of time interval}
 \item{E}{end of time interval}
+\item{Tt}{length of time interval}
 \item{H}{window set}
 \item{alpha}{significance level}
+\item{perform.CPD}{logical, if TRUE change point detection algorithm was performed}
+\item{tech.var}{list of technical variables with processes X and G_ht or R_ht}
+\item{type}{type of MFT which was performed: "mean"}
 }
 \description{
 The multiple filter test for mean change detection in time series or sequences of random variables.
 }
 \examples{
-# Normal distributed sequence with 3 change points of the mean (at n=100, 130, 350)
-Y1 <- rnorm(400,0,1); Y2 <- rnorm(400,3,1); Y3 <- rnorm(400,5,1); Y4 <- rnorm(600,4.6,1)
-Y  <- c(Y1[1:100],Y2[101:130],Y3[131:350],Y4[351:600])
-MFT.mean(Y)
+# Normal distributed sequence with 3 change points of the mean (at n=100, 155, 350)
+set.seed(50)
+X1   <- rnorm(400,0,1); X2 <- rnorm(400,3,1); X3 <- rnorm(400,5,1); X4 <- rnorm(600,4.6,1)
+X    <- c(X1[1:100],X2[101:155],X3[156:350],X4[351:600])
+mft  <- MFT.mean(X)
+plot(mft)
 # Set additional parameters (window set)
-MFT.mean(Y,autoset.H=FALSE,H=c(40,80,160))
+mft2 <- MFT.mean(X,autoset.H=FALSE,H=c(80,160,240))
+plot(mft2)
+
 
 }
 \references{
-Michael Messer, Marietta Kirchner, Julia Schiemann, Jochen Roeper, Ralph Neininger and Gaby Schneider (2014).
-A multiple filter test for the detection of rate changes in renewal processes with varying variance. The Annals of Applied Statistics 8(4): 2027-67
-<doi:10.1214/14-AOAS782>
+Michael Messer, Stefan Albert and Gaby Schneider (2018). The multiple filter test for change point detection in time
+series. Metrika <doi:10.1007/s00184-018-0672-1>
 }
 \seealso{
-\code{\link{MFT.rate}, \link{MFT.variance}}
+\code{\link{plot.MFT}, \link{summary.MFT}, \link{MFT.rate}, \link{MFT.variance}, \link{MFT.peaks}}
 }
 \author{
 Michael Messer, Stefan Albert, Solveig Plomer and Gaby Schneider

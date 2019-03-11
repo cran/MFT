@@ -1,4 +1,3 @@
-
 #' MFT.variance
 #'
 #' The multiple filter test for variance change detection in point processes on the line. 
@@ -6,40 +5,33 @@
 #' @param Phi numeric vector of increasing events, input point process
 #' @param rcp vector, rate CPs of Phi (if MFT for the rates is used: as CP[,1]), default: constant rate
 #' @param S	numeric, start of time interval, default: Smallest multiple of d that lies beyond min(Phi)
-#' @param E numeric, end of time interval, default: Smallest multiple of d that lies beyond max(Phi), needs E > S.
+#' @param E numeric, end of time interval, default: Smallest multiple of d that lies beyond max(Phi), needs E > S
 #' @param autoset.d_H	logical, automatic choice of window size H and step size d
 #' @param d numeric, > 0, step size delta at which processes are evaluated. d is automatically set if autoset.d_H = TRUE
 #' @param H vector, window set H, all elements must be increasing ordered multiples of d, the smallest element must be >= d and the largest =< (T/2). H is automatically set if autoset.d_H = TRUE
 #' @param alpha numeric, in (0,1), significance level
+#' @param method either "asymptotic", or "fixed", defines how threshold Q is derived, default: "asymptotic". If "asymptotic": Q is derived by simulation of limit process L (Brownian motion); possible set number of simulations (sim). If "fixed": Q may be set manually (Q)
 #' @param sim integer, > 0, No of simulations of limit process (for approximation of Q), default = 10000
-#' @param method either "asymptotic", or "fixed", defines how threshold Q is derived, default: "asymptotic". If "asymptotic": Q is derived by simulation of limit process L (Brownian motion); possible set number of simulations (sim). If "fixed": Q may be set automatically (Q)
-#' @param Q	numeric, rejection threshold, default: Q is simulated according to sim and alpha.
+#' @param Q	numeric, rejection threshold, default: Q is simulated according to sim and alpha
 #' @param perform.CPD logical, if TRUE change point detection algorithm is performed
-#' @param plot.CPD logical, if TRUE CPD-scenario is plotted. Only active if perform.CPD == TRUE
-#' @param plot.var logical, should the variance histogram be plotted? Only possible, if plot.CPD=TRUE
 #' @param print.output logical, if TRUE results are printed to the console	
-#' @param col "gray" or vector of colors of length(H). Colors for (R_ht) plot, default: NULL -> rainbow colors from blue to red. 
-#' @param ylab1 character, ylab for 1. graphic
-#' @param ylab2 character, ylab for 2. graphic 
-#' @param cex.legend 	numeric, size of annotations in plot
-#' @param cex.diamonds numeric, size of diamonds that indicate change points
-#' @param wid integer,>0, width of bars in variance histogram	
-#' @param main 	logical, indicates if title and subtitle are plotted
-#' @param plot.Q 	logical, indicates if rejection threshold Q is plotted
-#' @param plot.M	logical, indicates if test statistic M is plotted
-#' @param plot.h 	logical, indicates if a legend for the window set H is plotted
-#'
+
 #' @return invisible
 #' \item{M}{test statistic}
 #' \item{varQ}{rejection threshold}
+#' \item{method}{how threshold Q was derived, see 'Arguments' for detailed description}
 #' \item{sim}{number of simulations of the limit process (approximation of Q)}
 #' \item{CP}{set of change points estmated by the multiple filter algorithm, increasingly ordered in time}
 #' \item{var}{estimated variances between adjacent change points}
 #' \item{S}{start of time interval}
 #' \item{E}{end of time interval}
+#' \item{Tt}{length of time interval}
 #' \item{H}{window set}
 #' \item{d}{step size delta at which processes were evaluated}
 #' \item{alpha}{significance level}
+#' \item{perform.CPD}{logical, if TRUE change point detection algorithm was performed}
+#' \item{tech.var}{list of technical variables with processes Phi and G_ht}
+#' \item{type}{type of MFT which was performed: "variance"}
 #' 
 #' @examples 
 #' # Rate and variance change detection in Gamma process 
@@ -50,13 +42,14 @@
 #' p2 <- (mu*0.5)^2/sigma^2; lambda2 <- (mu*0.5)/sigma^2
 #' p3 <- mu^2/(sigma*1.5)^2; lambda3 <- mu/(sigma*1.5)^2
 #' p4 <- mu^2/(sigma*0.5)^2; lambda4 <- mu/(sigma*0.5)^2
-#' Phi<- cumsum(c(rgamma(1000,p1,lambda1),rgamma(500,p2,lambda2),
+#' Phi <- cumsum(c(rgamma(1000,p1,lambda1),rgamma(500,p2,lambda2),
 #' rgamma(500,p3,lambda3),rgamma(300,p4,lambda4)))
 #' # rcp  <- MFT.rate(Phi)$CP[,1] # MFT for the rates
 #' rcp <- c(30,37.5) # but here we assume known rate CPs
-#' MFT.variance(Phi,rcp=rcp) # MFT for the variances
+#' mft <- MFT.variance(Phi,rcp=rcp) # MFT for the variances
+#' plot(mft)
 #' 
-#' @seealso \code{\link{MFT.rate}, \link{MFT.mean}}
+#' @seealso \code{\link{MFT.rate}, \link{plot.MFT}, \link{summary.MFT}, \link{MFT.mean}, \link{MFT.peaks}}
 #' @author Michael Messer, Stefan Albert, Solveig Plomer and Gaby Schneider
 #' @references 
 #' Stefan Albert, Michael Messer, Julia Schiemann, Jochen Roeper and Gaby Schneider (2017) 
@@ -71,13 +64,15 @@
 ###### end
 
 MFT.variance <-
-function(Phi,rcp=NULL,autoset.d_H=TRUE,S=NULL,E=NULL,d=NULL,H=NULL,alpha=0.05,sim=10000,method="asymptotic",Q=NA,
-                       perform.CPD=TRUE,plot.CPD=TRUE,plot.var=TRUE,print.output=TRUE,col=NULL,ylab1=expression(abs(G[list(h,t)])),ylab2=expression(widehat(sigma)^2),cex.legend=1.2,cex.diamonds=1.4,wid=NULL,
-                       main=TRUE,plot.Q=TRUE,plot.M=TRUE,plot.h=TRUE)
+function(Phi,rcp=NULL,autoset.d_H=TRUE,S=NULL,E=NULL,d=NULL,H=NULL,alpha=0.05,method="asymptotic",sim=10000,Q=NA,
+                       perform.CPD=TRUE,print.output=TRUE)
 {
   ###
   ### Set Parameters
   ###
+  
+  if(! method %in% c("aymptotic","fixed")){"Invalid choice of method: method must be 'asymptotic' or 'fixed'"}
+  if( alpha*(1-alpha) <= 0){stop("Invalid choice of significance level: alpha must be in (0,1)")}
   
   if(is.null(S)  & is.null(E))	{S <- min(Phi); E <- max(Phi)}
   if(is.null(S)  & !is.null(E))	{S <- min(Phi)}
@@ -114,7 +109,7 @@ function(Phi,rcp=NULL,autoset.d_H=TRUE,S=NULL,E=NULL,d=NULL,H=NULL,alpha=0.05,si
   
   # Using only process between E and S, but save original process data
   Phi <- Phi[Phi>=S & Phi<=E]-S
-  if (length(rcp)>0) {if ((min(rcp)<=S)|(max(rcp)>=E)) {warning("Rate change point(s) outside of the process")}}
+  if (length(rcp)>0) {if ((min(rcp)<=S)|(max(rcp)>=E)) {stop("Rate change point(s) outside of the process")}}
   rcp <- rcp[rcp>=S & rcp<=E]
   S.old <- S; E.old <- E
   S   <- floor((S-S.old)/step)*step												# floor S to next d
@@ -130,6 +125,9 @@ function(Phi,rcp=NULL,autoset.d_H=TRUE,S=NULL,E=NULL,d=NULL,H=NULL,alpha=0.05,si
   }
   l <- length(rcp)
   
+  bar <- (mean(diff(Phi)))*100
+  wid <- floor(max(Phi))/(floor(floor(max(Phi))/bar)) 
+  if (wid>((E-S)/2)) {stop("width of variance bars too large")}
   
   if(! method %in% c("aymptotic","fixed")){"Invalid choice of method: method must be 'asymptotic' or 'fixed'"}
   if(method == "fixed" & !is.numeric(Q)){stop("Invalid choice of Q: Q must be positive real number")}
@@ -189,14 +187,7 @@ function(Phi,rcp=NULL,autoset.d_H=TRUE,S=NULL,E=NULL,d=NULL,H=NULL,alpha=0.05,si
   
   muz <- c(muz,rep(est.mean[ltc],length(Phi)-tc[ltc])); muz<-muz[-1]
   hilfsm <- matrix(NA,length(H),30) #Auxiliary matrix for CPs
-  if(is.null(col)){colors <- rainbow(length(H),start=2/3,end=0)} else{if(length(col) == 1 & col[1] == "gray"){colors <- gray.colors(length(H),0.8,0)}
-    else{colors <- col; if(length(col)!=length(H)){stop("Argument col must be either NULL, ''gray'', or a vector of colors of length of H")}}
-  } # Vector of colors for different windows  
-  GhtAll <- matrix(NA,length(H),1.1*ceiling((E-S)/(step))); G<-GhtAll
-  
-  bar <- (mean(diff(Phi)))*100
-  if (is.null(wid)) wid <- floor(max(Phi))/(floor(floor(max(Phi))/bar)) 
-  if (wid>((E-S)/2)) {stop("width of variance bars too large")}
+  GhtAll <- matrix(NA,length(H),ceiling((E-S)/(step))); G<-GhtAll
   
   ###
   ### Function to derive Ght for fixed h
@@ -240,122 +231,7 @@ function(Phi,rcp=NULL,autoset.d_H=TRUE,S=NULL,E=NULL,d=NULL,H=NULL,alpha=0.05,si
     ght <- vapply(seq(S+h,E-h,by=d),deriveGht,Phi=Phi,h=h,tc=tc,est.mean=est.mean,numeric(1)) 
   }#end-ght.mat
   
-  ###
-  ### Function to estimate variance in a window of size h
-  ###
   
-  var.window <- function (t,Phi,h,tc,est.mean)
-  {
-    # Calculation of lifetimes
-    lifet <- diff(Phi); h <- h/2; n <- length(Phi[t-h<Phi & Phi<t+h])
-    el <- which(Phi>t-h) [1]
-    if (is.na(el)==TRUE) el <- length(Phi)-1  
-    er <- max(which(Phi<t+h))
-    if (er<2) {er <- length(Phi)}
-    if (is.na(er)==TRUE) {er <- length(Phi)}
-    quaddev <- (lifet[el:(er-2)]-est.mean[el:(er-2)])^2   #Estimating variances
-    quaddev <- na.omit(quaddev)
-    n <- n-length(na.omit(unique(est.mean[el:(er-2)])))
-    resu <- sum(quaddev)/(n-2)
-    return(resu)
-  }#end-var.window
-  
-  ###
-  ### Plotting G_ht-processes for every h and t
-  ###
-  
-  plot.ght <- function(ght,H,step,colors,Q,cex.legend,plot.Q=TRUE,plot.M=TRUE,plot.h=TRUE,ylab1) {
-    max.ght <- max(abs(ght),na.rm=TRUE)
-    xm <- c(); x_max <- c()
-    par(mar=c(0.5,4,4,0.5),cex=1)
-    
-    for (i in 1:length(H))
-    {
-      Dz <- ght[1,]; Dz <- Dz[is.na(Dz)==FALSE]
-      border <- 1.2*max(Q,max.ght) ;
-      # Save max values for each i to determine M    
-      g <- na.omit(abs(ght[i,])); xm[i] <- which(g==max(g))[1]; x_max[i] <- abs(g[xm[i]])
-      if (i==1) #For i=1 create new plot, otherwise add lines
-      { 
-        plot(abs(ght[i,]), main="", xlab="", ylab="", type="l", ylim=c(-0.6,border),xaxt="n",
-             xlim=c(0,(length(Dz)+2*H[1]/step)), cex.axis=cex.legend, font.main=1, 
-             cex.lab=cex.legend, cex.main=1, bty="n", col=colors[1],yaxt="n")
-        lang <- length(ght[i,])
-        mtext(ylab1,side=2,padj=-2.6,cex=cex.legend)
-        if (plot.h) {legend(x="topright",inset=c(0,0.02),legend=as.character(round(H,0)),pch=19,col=colors,cex=min(cex.legend,cex.legend+0.5-0.05*length(H)),bty="n",title=expression(paste(h[i], " =")),pt.cex=min(cex.legend,cex.legend+0.5-0.05*length(H)),title.adj=0.2,xpd=TRUE)}
-        if (plot.Q) {
-          if (main) mtext(bquote(Q %~~% .(round(Q,2)) ),adj=1,padj=-0.5,cex=cex.legend)
-          lines(c(0,length(Dz)+2*H[1]/step),c(Q,Q),col="black", lty=2, lwd=1); text(S+15,Q,"Q",pos=3,cex=1.0*cex.legend)
-        } #end-if
-      } #end-if
-      if (i>1) lines(abs(ght[i,]),col=colors[i])
-    } #end-for
-    if (plot.M) {
-      if (main) mtext(bquote(M %~~% .(round(max(abs(ght),na.rm=TRUE),2)) ),adj=0,padj=-0.5, cex= cex.legend); 
-      posmax <- which(x_max==max(x_max)) #Print M  
-      points(xm[posmax]+H[posmax]/step,x_max[posmax],pch=4,cex=cex.legend,lwd=1)
-      text(xm[posmax]+(1.3*H[posmax])/step,x_max[posmax],paste("M"),cex=1.0*cex.legend)
-    }
-    axis(2,cex.axis=cex.legend) 
-    
-    
-  }#end-plot.ght
-  
-  ###
-  ### Plotting of variances
-  ###
-  
-  plot.variances <- function(Phi,S,E,S.old,wid,tc,muz,l1,lg,varianz,true.var,xl,h,step,colors,hvalue,cex.legend,ylab2)
-  {    
-    zeitpl <- seq(S+(wid/2),E-(wid/2),by=wid)
-    varf <- sapply(zeitpl,var.window,Phi=Phi,h=wid,tc=tc,est.mean=muz)
-    lzpl <- length(zeitpl)
-    par(mar=c(2,4,0.5,0.5),cex=1)
-    
-    yl <- 1.2*max(varf[is.na(varf)==FALSE & is.finite(varf)==TRUE])
-    plot(1,main="",xlab="",ylim=c(-0, yl),
-         ylab="",type="n", xaxt="n", cex.axis=cex.legend, cex.lab=1.0, cex.main=1.0,bty="n",
-         xlim=c(0,0+(lzpl)*xl),yaxt="n")
-    myTicks <- axTicks(2)
-    axis(2, at = myTicks, labels = formatC(myTicks, format = 'e',digits=1),cex.axis=cex.legend)
-    
-    for (m in 1:lzpl)
-    {
-      lines(c(m-1,m-1)*xl,c(0,varf[m])); lines(c(m-1,m)*xl,c(varf[m],varf[m])) 
-      lines(c(m,m)*xl,c(varf[m],0)) 
-    } #end-for
-    lines(c(0,lzpl)*xl,c(0,0))
-    mtext(ylab2,side=2,padj=-2.6,cex=cex.legend)
-    const.var <- mean((diff(Phi)-muz)^2,na.rm=TRUE)
-    if (l1==0) lines(c(0,length(varf[is.na(varf)==FALSE])*xl),rep(const.var,2),lwd=2, col="red") 
-    else 
-      for (k in 1:l1) 
-      {
-        lg[k] <- ((varianz[3*k-2])*xl*lzpl)/E
-        if (varianz[3*k-1]<=varianz[3*k]) 
-        { 
-          arrows(lg[k],varianz[3*k-1],lg[k],varianz[3*k],col="red", lwd=2, length=0)
-          arrows(lg[k],1.8*max(varf),lg[k],1.1*varianz[3*k],col=colors[which(h==hvalue[k])],xpd=TRUE,length=0.1,lwd=2)
-        }
-        else 
-        {
-          arrows(lg[k],varianz[3*k-1],lg[k],varianz[3*k],col="red", lwd=2, length=0)
-          arrows(lg[k],1.8*max(varf),lg[k],1.1*varianz[3*k-1],col=colors[which(h==hvalue[k])],xpd=TRUE,length=0.1,lwd=2)
-        }
-        
-        if (k==1) 
-        {
-          lines(c(0.0*xl,lg[k]),c(rep(varianz[3*k-1],2)),lwd=2,col="red")
-        }
-        else
-        {
-          lines(c(lg[k-1],lg[k]),c(rep(varianz[3*k-1],2)),lwd=2,col="red")
-        }
-      } #end-for
-    if (l1>0) lines(c((varianz[3*l1-2])*xl*lzpl/E,xl*lzpl),
-                    c(rep(varianz[3*l1],2)),lwd=2,col="red") 
-    axis(1,S+c(0.0*xl,lg,length(varf[is.na(varf)==FALSE])*xl),c(round(S+S.old,2),round(true.var+S.old,2),round(E+S.old,2)),cex.axis=cex.legend)
-  }#end-plot.variances
   
   ###
   ### Change-Point-Detection-Function
@@ -419,7 +295,7 @@ function(Phi,rcp=NULL,autoset.d_H=TRUE,S=NULL,E=NULL,d=NULL,H=NULL,alpha=0.05,si
   }#end-cpa
   
   ###
-  ### Calculate variances between cp
+  ### Function to calculate variances between cp
   ###
   
   var.betCP <- function(Phi,hilfsv,step,muz, S.old)
@@ -447,6 +323,27 @@ function(Phi,rcp=NULL,autoset.d_H=TRUE,S=NULL,E=NULL,d=NULL,H=NULL,alpha=0.05,si
   }#end-var.betCP
   
   ###
+  ### Function to estimate variance in a window of size h
+  ###
+  
+  var.window <- function (t,Phi,h,tc,est.mean)
+  {
+    # Calculation of lifetimes
+    lifet <- diff(Phi); h <- h/2; n <- length(Phi[t-h<Phi & Phi<t+h])
+    el <- which(Phi>t-h) [1]
+    if (is.na(el)==TRUE) el <- length(Phi)-1  
+    er <- max(which(Phi<t+h))
+    if (er<2) {er <- length(Phi)}
+    if (is.na(er)==TRUE) {er <- length(Phi)}
+    quaddev <- (lifet[el:(er-2)]-est.mean[el:(er-2)])^2   #Estimating variances
+    quaddev <- na.omit(quaddev)
+    n <- n-length(na.omit(unique(est.mean[el:(er-2)])))
+    resu <- sum(quaddev)/(n-2)
+    return(resu)
+  }#end-var.window
+  
+  
+  ###
   ###begin main part
   ###
   
@@ -459,35 +356,14 @@ function(Phi,rcp=NULL,autoset.d_H=TRUE,S=NULL,E=NULL,d=NULL,H=NULL,alpha=0.05,si
     GhtAll[i,1:ml] <- rep(NA,ml); GhtAll[i,((ml+1):(ml+length(Ght[[i]])))] <- Ght[[i]]
   } #end-for
   
-  ###
-  ###Plotting of Ght-processes
-  ###
-  
-  if (plot.CPD==TRUE) 
+  varianz<-rhvalue<-NA;  G <- abs(GhtAll)
+  #Derive variances between CPs
+  if (max(G,na.rm=TRUE)<=Q)    #Null hypothesis not rejected
   {
-    layout(c(1,1,2))
-    plot.ght(ght=GhtAll,H=H,step=step,colors=colors,Q=Q,cex.legend=cex.legend,plot.Q=plot.Q,plot.M=plot.M,plot.h=plot.h,ylab1=ylab1)  
+    result3 <- "No variance CP found!"; result2 <- NA
+    const.var <- mean((diff(Phi)-muz)^2)
   } #end-if
-  
-  result <- 1; G <- abs(GhtAll)
-  if (max(G,na.rm=TRUE)<Q)   
-  {
-    result <- 0
-    invisible(list(cp=NA))
-    if (plot.CPD==TRUE) {if (main==TRUE) {title(main=list("0 variance change points detected",cex=1.0*cex.legend))}
-      if (plot.var==TRUE)  
-      { 
-        Dz <- GhtAll[1,] ; Dz <- Dz[is.na(Dz)==FALSE]
-        xl <- length(Dz)+2*H[1]/step
-        plot.variances(Phi,S,E,S.old=S.old,wid=wid,tc,muz=muz,l1=0,lg=NA,varianz=NA,
-                       true.var=NA,xl,H,step,colors,hvalue=NA,cex.legend=cex.legend,ylab2=ylab2)
-        result3 <- "No variance CP found!"; result2 <- NA
-        const.var <- mean((diff(Phi)-muz)^2)
-      } #end-if
-    }#end-if
-  } #end-if
-  else { 
-    l1 <- 0; lg <- NA; true.var <- NA
+  else {  #Null hypothesis rejected
     if (perform.CPD==TRUE)
     {  
       # Change-Point-Detection
@@ -496,29 +372,7 @@ function(Phi,rcp=NULL,autoset.d_H=TRUE,S=NULL,E=NULL,d=NULL,H=NULL,alpha=0.05,si
       # Estimate variances between detected CPs
       if (length(hilfsv)==0) realma <- 0 
       else  varianz<-var.betCP(Phi,hilfsv,step,muz,S.old)
-      
       l1 <- length(varianz[varianz!=0])/3 ;lg <- rep(NA,l1); pos.h <- rep(NA,l1); true.var <- rep(NA,l1)
-      
-      # Draw the CPs
-      if (l1==0) l1 <- 0 else
-        for (k in 1:l1) 
-        {
-          pos.h[k] <- which(H==rhvalue[k]); true.var[k]<-varianz[3*k-2]
-          lg[k] <- varianz[3*k-2]/step
-          if (plot.CPD==TRUE) 
-          {
-            points(lg[k],abs(GhtAll[pos.h[k],round(lg[k])]),col=1,cex=cex.diamonds,lwd=1)
-            points(lg[k],-0.3,pch=18,col=colors[pos.h[k]],xpd=TRUE,cex=cex.diamonds+0.4)  
-            points(lg[k],-0.3,pch=5,col=1,xpd=TRUE,cex=cex.diamonds) 
-            if (main==TRUE)
-            {
-              if (l1==1) {title(main=list("1 variance change point detected",cex=1.0*cex.legend))}
-              else {title(main=list(paste(l1," variance change points detected"),cex=1.0*cex.legend))}
-            } #end-if
-          } #end-if
-          
-        } #end-for
-      if (plot.var==FALSE) axis(1,S+c(0,lg,E/step),round(c(round(S,2),round(lg,2),round(E/step,2))*step,2),cex.axis=cex.legend)
       
       # Results are written in a result matrix.
       result2 <- matrix(0,l1+1,4)  
@@ -538,39 +392,40 @@ function(Phi,rcp=NULL,autoset.d_H=TRUE,S=NULL,E=NULL,d=NULL,H=NULL,alpha=0.05,si
       if (is.vector(result2)) {names(result2) <- first}
       else {colnames(result2) <- first}
     }
-    if (plot.CPD==TRUE&plot.var==TRUE)   # If necessary: Estimated variances in wid-intervals are calculated
-    {  
-      Dz <- GhtAll[1,]; Dz <- Dz[is.na(Dz)==FALSE]; xl <- length(Dz)+2*H[1]/step
-      plot.variances(Phi,S,E,S.old=S.old,wid,tc,muz=muz,l1,lg,varianz,true.var,xl,H,step,colors,rhvalue,cex.legend,ylab2=ylab2)
-    } #end-if
-  }
+  } #end-else
   M <- max(abs(GhtAll),na.rm=TRUE); const.var <- mean((diff(Phi)-muz)^2,na.rm=TRUE)
   Tt <- signif(E-S,2)
+  if ((is.na(result2[1]))|(is.vector(result2))) result2 <- t(as.matrix(result2)); 
   
   if (print.output) { # Print output in a short report
-    if ((is.na(result2[1]))|(is.vector(result2))) result2 <- t(as.matrix(result2)); 
     cat("","\n")
     cat("MFT variances table",sep="\n"); cat("","\n")
     cat(paste("Tt = ",Tt, ", d = ",round(step,2)," and H = {",paste(round(H,2),collapse=", "),"}",sep="")); cat("","\n")
     if(M>Q){cat(paste("Stationarity was rejected: M = ",round(M,2)," > Q = ", Q = round(Q,2),sep=""),sep="\n")}	else{cat(paste("Stationarity was not rejected: M = ",round(M,2)," < Q = ", Q = round(Q,2),sep=""),sep="\n")}; cat("","\n")
+    
+    if(method=="asymptotic"){cat("(Threshold Q derived by simulation) \n\n")}
+    if(method=="fixed"){cat("(Threshold Q set by user) \n\n")}
+    
     if(perform.CPD){
       cat("CPD was performed: ")
-      if(M<Q){cat("No change points detected")}
+      if(M<=Q){cat("No change points detected")}
       if((dim(result2)[1]==1)&(M>Q)){cat(paste(dim(result2)[1],"change point detected at "))} 
       if((dim(result2)[1]>=2)&(M>Q)){cat(paste(dim(result2)[1],"change points detected at "))}
       if((dim(result2)[1]>0)&(M>Q)){cat(paste(round(result2[,1])),sep=", ")}; cat("","\n")
-      if(M<Q){cat(paste("The estimated variance is",signif(const.var,3) ));  cat("","\n")} else{cat("The estimated variances are ")
+      if(M<=Q){cat(paste("The estimated variance is",signif(const.var,3) ));  cat("","\n")} else{cat("The estimated variances are ")
         if(perform.CPD) {cat(paste(signif(c(result2[,2],result2[dim(result2)[1],3]),3)),sep=", ")}
         cat("","\n")
       }
     }#end-if-perform.CPD	
-    if(!perform.CPD){cat("CPD was not performed")
-      cat("","\n"); cat(paste("The estimated variance is",signif(const.var,3) ))}
+    if(!perform.CPD){cat("CPD was not performed")}
+      #cat("","\n"); cat(paste("The estimated variance is",signif(const.var,3) ))}
   }#end-if-print.output  
   
-  M <- max(abs(GhtAll),na.rm=TRUE); names(M) <- "test statistic M"; va <- "not estimated"
+  M <- max(abs(GhtAll),na.rm=TRUE); names(M) <- "test statistic M"; va <- signif(const.var,3)
+  tech.var<-invisible(list(S.old=S.old,tc=tc,muz=muz,Phi=Phi,G_ht=GhtAll))
   if ((perform.CPD)&(M>Q)) {va <- signif(c(unname(result2[,2]),unname(result2[dim(result2)[1],3])),3)}
-  if (M>Q) {invisible(list(CP=result2,var=va,varQ=Q,M=M,H=signif(H,2),alpha=alpha,d=step,sim=sim,S=signif(S.old,2),E=signif(E.old,2)))}
-  else {invisible(list(CP=result3,var=signif(const.var,3),varQ=Q,M=M,H=signif(H,2),alpha=alpha,d=step,sim=sim,S=signif(S.old,2),E=signif(E.old,2)))}
-  
+  if (M>Q) {mft<-list(CP=result2,var=va,varQ=Q,M=M,method=method,H=H,alpha=alpha,d=step,sim=sim,S=signif(S,2),E=signif(E,2),Tt=Tt,perform.CPD=perform.CPD,tech.var=tech.var,type="variance")}
+   else {mft<-list(CP=result3,var=signif(const.var,3),varQ=Q,M=M,H=H,method=method,alpha=alpha,d=step,sim=sim,S=signif(S,2),E=signif(E,2),Tt=Tt,perform.CPD=perform.CPD,tech.var=tech.var,type="variance")}
+  class(mft) <- "MFT"
+  invisible(mft)
 }

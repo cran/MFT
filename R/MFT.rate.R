@@ -1,55 +1,45 @@
-
 #' MFT.rate
 #'
 #' The multiple filter test for rate change detection in point processes on the line. 
 #'
 #' @param Phi numeric vector of increasing events, input point process
-#' @param m  non-negative integer, dependence parameter: serial corellation up to order m is respected for the estimation of rho
-#' @param rescale logical, if TRUE statistic G is rescaled to statistic R 
+#' @param m  non-negative integer, dependence parameter: serial corellation rho up to order m estimated
 #' @param cutout  logical, if TRUE for every point, for which the estimated rho becomes negative, the h-neighborhood of G (resp. R) is set to zero. This might only occur, if m > 0 
+#' @param autoset.d_H	logical, automatic choice of window size H and step size d
 #' @param S	numeric, start of time interval, default: Smallest multiple of d that lies beyond min(Phi)
 #' @param E numeric, end of time interval, default: Smallest multiple of d that lies beyond max(Phi), needs E > S.
-#' @param autoset.d_H	logical, automatic choice of window size H and step size d
 #' @param d numeric, > 0, step size delta at which processes are evaluated. d is automatically set if autoset.d_H = TRUE
 #' @param H vector, window set H, all elements must be increasing ordered multiples of d, the smallest element must be >= d and the largest =< (T/2). H is automatically set if autoset.d_H = TRUE
 #' @param alpha numeric, in (0,1), significance level
+#' @param method either "asymptotic", "bootstrap" or "fixed", defines how threshold Q is derived, default: "asymptotic", If "asymptotic": Q is derived by simulation of limit process L (Brownian motion); possible set number of simulations (sim), If "bootstrap": Q is derived by (Block)-Bootstrapping; possibly set number of simulations (sim) and blocksize (blocksize), If "fixed": Q may be set manually (Q)
 #' @param sim integer, > 0, No of simulations of limit process (for approximation of Q), default = 10000
-#' @param method either "asymptotic", "bootstrap" or "fixed", defines how threshold Q is derived, default: "asymptotic", If "asymptotic": Q is derived by simulation of limit process L (Brownian motion); possible set number of simulations (sim), If "bootstrap": Q is deried by (Block)-Bootstrapping; possibly set number of simulations (sim) and blocksize (blocksize), If "fixed": Q may be set automatically (Q)
+#' @param rescale logical, if TRUE statistic G is rescaled to statistic R, default = FALSE 
 #' @param Q	numeric, rejection threshold, default: Q is simulated according to sim and alpha.
 #' @param blocksize  NA or integer >= 1, if method == 'bootstrap', blocksize determines the size of blocks (number of life times) for bootstrapping
 #                If NA: blocksize is autoset to ceiling((length(n)^(1/4))), while n denotes the number of life times of input
 #' @param perform.CPD logical, if TRUE change point detection algorithm is performed
-#' @param plot.CPD logical, if TRUE CPD-scenario is plotted. Only active if perform.CPD == TRUE
 #' @param print.output logical, if TRUE results are printed to the console	
-#' @param col 	"gray" or vector of colors of length(H). Colors for (R_ht) plot, default: NULL -> rainbow colors from blue to red. 
-#' @param ylab1 character, ylab for 1. graphic
-#' @param ylab2 character, ylab for 2. graphic 
-#' @param cex.legend 	numeric, size of annotations in plot
-#' @param cex.diamonds numeric, size of diamonds that indicate change points
-#' @param main 	logical, indicates if title and subtitle are plotted
-#' @param plot.Q 	logical, indicates if rejection threshold Q is plotted
-#' @param plot.M	logical, indicates if test statistic M is plotted
-#' @param plot.h 	logical, indicates if a legend for the window set H is plotted
-#' @param plot.cp logical, indicates if a legend of detected CPs is plotted
-#' @param plot.rate logical, indicates if a legend of estimated rates is plotted
-#' @param breaks integer, > 0, number of breaks in rate histogram	
-#'
+
 #' @return invisible
 #' \item{M}{test statistic}
 #' \item{Q}{rejection threshold}
+#' \item{method}{how threshold Q was derived, see 'Arguments' for detailed description}
 #' \item{sim}{number of simulations of the limit process (approximation of Q)}
 #' \item{blocksize}{size of blocks (number of life times) for bootstrapping (approximation of Q)}
 #' \item{rescale}{states whether statistic G is rescaled to R}
 #' \item{m}{order of respected serial correlation (m-dependence)}
 #' \item{CP}{set of change points estmated by the multiple filter algorithm, increasingly ordered in time}
 #' \item{rate}{estimated mean rates between adjacent change points}
-#' \item{SWD}{sets of change points estimated from preprocessing single window detections}
 #' \item{S}{start of time interval}
 #' \item{E}{end of time interval}
+#' \item{Tt}{length of time interval}
 #' \item{H}{window set}
 #' \item{d}{step size delta at which processes were evaluated}
 #' \item{alpha}{significance level}
-#' \item{cutout}{states whether cutout was used (see arguments)}
+#' \item{cutout}{states whether cutout was used (see 'Arguments')}
+#' \item{perform.CPD}{logical, if TRUE change point detection algorithm was performed}
+#' \item{tech.var}{list of technical variables with processes Phi and G_ht or R_ht}
+#' \item{type}{type of MFT which was performed: "rate"}
 #'
 #' @examples 
 #' # Rate change detection in Poisson process 
@@ -60,10 +50,11 @@
 #' Phi3 <- runif(rpois(1,lambda=200),600,680)
 #' Phi4 <- runif(rpois(1,lambda=400),680,1000)
 #' Phi  <- sort(c(Phi1,Phi2,Phi3,Phi4)) 
-#' MFT.rate(Phi,breaks=30)
+#' mft  <- MFT.rate(Phi)
+#' plot(mft)
 #' 
 #' 
-#' @seealso \code{\link{MFT.m_est}, \link{MFT.variance}, \link{MFT.mean}}
+#' @seealso \code{\link{MFT.variance}, \link{MFT.m_est}, \link{plot.MFT}, \link{summary.MFT}, \link{MFT.mean}, \link{MFT.peaks}}
 #' @author Michael Messer, Stefan Albert, Solveig Plomer and Gaby Schneider
 #' @references 
 #' Michael Messer, Marietta Kirchner, Julia Schiemann, Jochen Roeper, Ralph Neininger and Gaby Schneider (2014).
@@ -83,7 +74,7 @@
 
 
 MFT.rate <-
-function(Phi,m=0,rescale=TRUE,cutout=TRUE,autoset.d_H=TRUE,S=NULL,E=NULL,H=NULL,d=NULL,alpha=0.05,sim=10000,method="asymptotic",Q=NA,blocksize=NA,perform.CPD=TRUE,plot.CPD=TRUE,print.output=TRUE,col=NULL,ylab1=NULL,ylab2=NULL,cex.legend=1.2,cex.diamonds=1.4,main=TRUE,plot.Q=TRUE,plot.M=TRUE,plot.h=TRUE,plot.rate=FALSE,plot.cp=FALSE,breaks=NULL){
+function(Phi,m=0,cutout=TRUE,autoset.d_H=TRUE,S=NULL,E=NULL,d=NULL,H=NULL,alpha=0.05,method="asymptotic",sim=10000,rescale=FALSE,Q=NA,blocksize=NA,perform.CPD=TRUE,print.output=TRUE){
   
   ###
   ### Set Parameters
@@ -129,8 +120,12 @@ function(Phi,m=0,rescale=TRUE,cutout=TRUE,autoset.d_H=TRUE,S=NULL,E=NULL,H=NULL,
   if(!is.logical(cutout)){stop("Invalid cutout option: cutout must be logical")}
   
   if(method == "bootstrap" & rescale == TRUE){stop("rescaling not available for bootstrapping: set rescale to FALSE")}
-  if(method == "bootstrap" & !(is.na(blocksize) | is.numeric(blocksize)) ){stop("Invalid choice of blocksize for Bootstapping: blocksize must be positive integer")}
-  if(method == "bootstrap" & !(is.na(blocksize) | (is.numeric(blocksize) & blocksize%%1 == 0 & blocksize>=1))){stop("Invalid choice of blocksize for bootstapping: blocksize must be positive integer")}
+  if (method == "bootstrap" & (is.na(blocksize) | !is.numeric(blocksize))) {
+    stop("Invalid choice of blocksize for Bootstapping: blocksize must be positive integer")
+  }
+  if (method == "bootstrap" & (is.na(blocksize) | !(is.numeric(blocksize) & blocksize%%1 == 0 & blocksize >= 1))) {
+    stop("Invalid choice of blocksize for bootstapping: blocksize must be positive integer")
+  }
   if(method == "bootstrap" & sim > 1000){cat("Warning: High comupational time. Possibly reduce the number of bootstrap-simulations: sim",sep="\n")}
   
   if(!is.numeric(m)){stop("Invalid choice of dependence parameter: m must be non-negative integer")}
@@ -326,102 +321,6 @@ function(Phi,m=0,rescale=TRUE,cutout=TRUE,autoset.d_H=TRUE,S=NULL,E=NULL,H=NULL,
   }#end-perform.CPD
   
   ###
-  #### plot of scenario
-  ###
-  
-  if(plot.CPD & !perform.CPD){cat("Can not plot scenario. Need perform.CPD == TRUE",sep="\n")}
-  
-  if(plot.CPD & perform.CPD){
-    
-    plot.cpd <- function(Phi,R_ht,S,E,d,H,Q,M,CP,rate,col,ylab1,ylab2,plot.Q,cex.legend,cex.diamonds,main,plot.h,plot.rate,plot.cp,breaks){
-      
-      if(is.null(col)){col <- rainbow(length(H),start=2/3,end=0)} else{if(length(col) == 1 & col[1] == "gray"){col <- gray.colors(length(H),0.8,0)}
-        else{col <- col; if(length(col)!=length(H)){stop("Argument col must be either NULL, ''gray'', or a vector of colors of length of H")}}
-      } # Vector of colors for different windows
-      col.cp <- apply(as.matrix(CP[,2]),MARGIN=1, function(x){col[which(x == H)]}) # Vector that codes CP <-> col
-      
-      # Graphic 1: R_ht	
-      
-      if(rescale){mi <- min (  c(min( sapply(R_ht, min ) , -7 ) )) - 1 }else{mi <- 0}
-      ma <- max (  c(max( sapply(R_ht, max ) ,  Q ) )) + 1  # Eventuelle exchange Q with 12
-      
-      layout(c(1,1,2))
-      par(cex=1,mar=c(0.5,4,4,0.5))
-      plot(1,type="n",ylim=c(mi,ma),xlim=c(S,E+(1/10)*(E-S)),xlab="",ylab="",axes=FALSE,cex.lab=cex.legend) 
-      axis(2,cex.axis=cex.legend); mtext(ylab1,side=2,cex=cex.legend,padj=-2.5)
-      
-      for(i in 1:length(H)){ # R_ht-processes
-        lines(seq(S+H[i],(E-H[i]),d),R_ht[[i]],col=col[i])
-      }#end-for-i	
-      
-      if(plot.M){
-        h_max <- which.max(sapply(R_ht,max)); x_max <- which.max(R_ht[[h_max]]); y_max <- R_ht[[h_max]][x_max]
-        points((x_max-1)*d+H[h_max]+S,y_max,pch=4,cex=cex.legend); text((x_max-1)*d+H[h_max]+S,y_max,"M",pos=2,cex=cex.legend)
-      }#end-if-plot.M	
-      
-      if(plot.Q){ # Rejection threshold Q
-        lines(c(S,E),rep(Q,2),lty="dashed"); text(S+15,Q,"Q",pos=3,cex=cex.legend)
-      }#end-if-plot.Q
-      
-      if(dim(CP)[1] > 0){ # CPs 
-        for(i in 1:(dim(CP)[1]) ){
-          points(CP[i,1],R_ht[[which(CP[i,2] == H)]][((CP[i,1]-S-(CP[i,2]-d))/d)],col= 1,cex=cex.diamonds)
-          points(CP[i,1],mi,col=col[which(CP[i,2] == H)],pch=18,cex=cex.diamonds+0.4)
-          points(CP[i,1],mi,col=1,pch=5,cex=cex.diamonds)
-        }#end-for
-      }#end-if
-      
-      if(is.logical(main)){ # Title
-        if(main){ 
-          if(dim(CP)[1] == 1)	{title(paste(dim(CP)[1]," change point detected"))} else{title(paste(dim(CP)[1]," change points detected"))} 
-          mtext(bquote(M %~~% .(round(M,2)) ),adj=0,padj=-0.5, cex= cex.legend )
-          mtext(bquote(Q %~~% .(round(Q,2)) ),adj=1,padj=-0.5,cex=cex.legend )
-        }#end-if 
-      }#end-if
-
-      if(plot.h != FALSE){ # Legend for h_i
-        if(plot.h){plot.h <- "topright"}
-        legend(x=plot.h,inset=c(0,0.02),legend=as.character(H),pch=19,col=col,cex=min(cex.legend,cex.legend+0.5-0.05*length(H)),bty="n",title=expression(paste(h[i], " =")),pt.cex=min(cex.legend,cex.legend+0.5-0.05*length(H)),title.adj=0.2)
-      }#end-if
-      
-      if(plot.rate != FALSE){ # Legend for rate
-        legend(x=plot.rate,inset=c(0,0.02),legend=as.character(round(rate,2)),pch=19,cex=cex.legend,bty="n",title=expression(paste(hat(lambda)[i] %~~% "")),title.adj=0.2)
-      }#end-if
-      
-      if(dim(CP)[1] > 0){ # Legend for CPs	
-        if(plot.cp != FALSE){
-          legend(x=plot.cp,inset=c(0,0.02),legend=as.character(CP[,1]),col=col.cp,pch=18,cex=cex.legend,bty="n",text.col=col.cp,title=expression(paste(hat(c)[i]," = ")),title.col=1,pt.cex=cex.legend+0.4 )
-          legend(x=plot.cp,inset=c(0,0.02),legend=as.character(CP[,1]),col=1,pch=5,cex=cex.legend,bty="n",text.col=0,title=expression(paste(hat(c)[i]," = ")),title.col=0,pt.cex=cex.legend ) 
-        }#end-if
-      }#end-if
-      
-      # Graphic 2: Rate histogram
-      par(mar=c(2,4,0.5,0.5))
-      if (is.null(breaks)){breaks <- seq(S,E,length=round(Tt/H[1]))}
-      histo 	  		<-  hist(Phi,breaks=breaks,plot=FALSE)
-      bin       		<-  diff(histo$breaks[1:2])
-      histo$counts  	<-  histo$counts / bin
-      plot(histo,xlab="",ylab=ylab2,main="",axes=FALSE,xlim=c(S,E+(1/10)*(E-S)),ylim=c(0,1.3*max(histo$counts)),cex.lab=cex.legend) 
-      axis(1,at=c(S,CP[,1],E),cex.axis=cex.legend); axis(2,cex.axis=cex.legend)
-      lines(c(S,CP[,1],E),c(rate,rate[length(rate)]),type="s",col=2,lwd=2)
-      if(length(CP[,1] > 0)){
-        for(i in 1:length(CP[,1])){
-          arrows(CP[i,1],2*max(histo$counts),CP[i,1],max(rate[i:(i+1)])*1.15,col=col.cp[i],length=0.1,lwd=2)	
-        }#end-for
-      }#end-if
-      
-    }#end-plot.cpd
-    
-    if(is.null(ylab1) & rescale){ylab1  <- expression(paste(R[list(h,t)]))}
-    if(is.null(ylab1) & !rescale){ylab1  <- expression(paste("|",G[list(h,t)],"|",sep =""))}
-    if(is.null(ylab2)){ylab2  <- "rate"}
-    
-    # Perform plot:
-    plot.cpd(Phi=Phi,R_ht=R_ht,S=S,E=E,d=d,H=H,M=M,Q=parameter$Q,CP=CP,rate=rate,col=col,ylab1=ylab1,ylab2=ylab2,plot.Q=plot.Q,cex.legend=cex.legend,cex.diamonds=cex.diamonds,main=main,plot.h=plot.h,plot.rate=plot.rate,plot.cp=plot.cp,breaks=breaks)
-    
-  }#end if-plot.CPD
-  
-  ###
   #### Output
   ###
   
@@ -439,9 +338,9 @@ function(Phi,m=0,rescale=TRUE,cutout=TRUE,autoset.d_H=TRUE,S=NULL,E=NULL,H=NULL,
     
     if(perform.CPD){
       cat("CPD was performed: ")
-      if(dim(CP)[1]==0){cat("No change points detected")}
-      if(dim(CP)[1]==1){cat(paste(dim(CP)[1],"change point detected at "))} 
-      if(dim(CP)[1]>1){cat(paste(dim(CP)[1],"change points detected at "))}
+      if(dim(CP)[1]==0){cat("No rate change points detected")}
+      if(dim(CP)[1]==1){cat(paste(dim(CP)[1],"rate change point detected at "))} 
+      if(dim(CP)[1]>1){cat(paste(dim(CP)[1],"rate change points detected at "))}
       if(dim(CP)[1]>0){cat(paste(sort(CP[,1])),sep=", ")}; cat("","\n")
       if(length(rate)==1){cat(paste("The estimated rate is",signif(rate,2) ))} else{cat("The estimated rates are ")
         cat(paste(signif(rate,2)),sep=", ")}
@@ -450,7 +349,11 @@ function(Phi,m=0,rescale=TRUE,cutout=TRUE,autoset.d_H=TRUE,S=NULL,E=NULL,H=NULL,
     
   }#-end-if-print.output
   
-  if(perform.CPD==FALSE){CP<-NA; SWD <- NA; rate <- NA}
-  invisible(list(M=M,Q=parameter$Q,method=method,sim=sim,blocksize=blocksize,rescale=rescale,m=m,CP=CP,rate=rate,SWD=SWD,S=S,E=E,H=H,d=d,alpha=alpha,cutout=cutout))
-  
+  if(perform.CPD==FALSE){CP<-NA; rate <- NA}
+  if (rescale) tech.var<-list(Phi=Phi,R_ht=R_ht,G_ht=NA)
+  else tech.var<-list(Phi=Phi,R_ht=NA,G_ht=R_ht)
+  mft<-list(M=M,Q=parameter$Q,method=method,sim=sim,blocksize=blocksize,rescale=rescale,m=m,CP=CP,rate=rate,S=S,
+            Tt=Tt,E=E,H=H,d=d,alpha=alpha,cutout=cutout,perform.CPD=perform.CPD,tech.var=tech.var,type="rate")
+  class(mft) <- "MFT"
+  invisible(mft)
 }

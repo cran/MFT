@@ -4,14 +4,10 @@
 \alias{MFT.variance}
 \title{MFT.variance}
 \usage{
-MFT.variance(Phi, rcp = NULL, autoset.d_H = TRUE, S = NULL, E = NULL,
-  d = NULL, H = NULL, alpha = 0.05, sim = 10000,
-  method = "asymptotic", Q = NA, perform.CPD = TRUE, plot.CPD = TRUE,
-  plot.var = TRUE, print.output = TRUE, col = NULL,
-  ylab1 = expression(abs(G[list(h, t)])),
-  ylab2 = expression(widehat(sigma)^2), cex.legend = 1.2,
-  cex.diamonds = 1.4, wid = NULL, main = TRUE, plot.Q = TRUE,
-  plot.M = TRUE, plot.h = TRUE)
+MFT.variance(Phi, rcp = NULL, autoset.d_H = TRUE, S = NULL,
+  E = NULL, d = NULL, H = NULL, alpha = 0.05,
+  method = "asymptotic", sim = 10000, Q = NA, perform.CPD = TRUE,
+  print.output = TRUE)
 }
 \arguments{
 \item{Phi}{numeric vector of increasing events, input point process}
@@ -22,7 +18,7 @@ MFT.variance(Phi, rcp = NULL, autoset.d_H = TRUE, S = NULL, E = NULL,
 
 \item{S}{numeric, start of time interval, default: Smallest multiple of d that lies beyond min(Phi)}
 
-\item{E}{numeric, end of time interval, default: Smallest multiple of d that lies beyond max(Phi), needs E > S.}
+\item{E}{numeric, end of time interval, default: Smallest multiple of d that lies beyond max(Phi), needs E > S}
 
 \item{d}{numeric, > 0, step size delta at which processes are evaluated. d is automatically set if autoset.d_H = TRUE}
 
@@ -30,52 +26,33 @@ MFT.variance(Phi, rcp = NULL, autoset.d_H = TRUE, S = NULL, E = NULL,
 
 \item{alpha}{numeric, in (0,1), significance level}
 
+\item{method}{either "asymptotic", or "fixed", defines how threshold Q is derived, default: "asymptotic". If "asymptotic": Q is derived by simulation of limit process L (Brownian motion); possible set number of simulations (sim). If "fixed": Q may be set manually (Q)}
+
 \item{sim}{integer, > 0, No of simulations of limit process (for approximation of Q), default = 10000}
 
-\item{method}{either "asymptotic", or "fixed", defines how threshold Q is derived, default: "asymptotic". If "asymptotic": Q is derived by simulation of limit process L (Brownian motion); possible set number of simulations (sim). If "fixed": Q may be set automatically (Q)}
-
-\item{Q}{numeric, rejection threshold, default: Q is simulated according to sim and alpha.}
+\item{Q}{numeric, rejection threshold, default: Q is simulated according to sim and alpha}
 
 \item{perform.CPD}{logical, if TRUE change point detection algorithm is performed}
 
-\item{plot.CPD}{logical, if TRUE CPD-scenario is plotted. Only active if perform.CPD == TRUE}
-
-\item{plot.var}{logical, should the variance histogram be plotted? Only possible, if plot.CPD=TRUE}
-
 \item{print.output}{logical, if TRUE results are printed to the console}
-
-\item{col}{"gray" or vector of colors of length(H). Colors for (R_ht) plot, default: NULL -> rainbow colors from blue to red.}
-
-\item{ylab1}{character, ylab for 1. graphic}
-
-\item{ylab2}{character, ylab for 2. graphic}
-
-\item{cex.legend}{numeric, size of annotations in plot}
-
-\item{cex.diamonds}{numeric, size of diamonds that indicate change points}
-
-\item{wid}{integer,>0, width of bars in variance histogram}
-
-\item{main}{logical, indicates if title and subtitle are plotted}
-
-\item{plot.Q}{logical, indicates if rejection threshold Q is plotted}
-
-\item{plot.M}{logical, indicates if test statistic M is plotted}
-
-\item{plot.h}{logical, indicates if a legend for the window set H is plotted}
 }
 \value{
 invisible
 \item{M}{test statistic}
 \item{varQ}{rejection threshold}
+\item{method}{how threshold Q was derived, see 'Arguments' for detailed description}
 \item{sim}{number of simulations of the limit process (approximation of Q)}
 \item{CP}{set of change points estmated by the multiple filter algorithm, increasingly ordered in time}
 \item{var}{estimated variances between adjacent change points}
 \item{S}{start of time interval}
 \item{E}{end of time interval}
+\item{Tt}{length of time interval}
 \item{H}{window set}
 \item{d}{step size delta at which processes were evaluated}
 \item{alpha}{significance level}
+\item{perform.CPD}{logical, if TRUE change point detection algorithm was performed}
+\item{tech.var}{list of technical variables with processes Phi and G_ht}
+\item{type}{type of MFT which was performed: "variance"}
 }
 \description{
 The multiple filter test for variance change detection in point processes on the line.
@@ -89,11 +66,12 @@ p1 <- mu^2/sigma^2; lambda1 <- mu/sigma^2
 p2 <- (mu*0.5)^2/sigma^2; lambda2 <- (mu*0.5)/sigma^2
 p3 <- mu^2/(sigma*1.5)^2; lambda3 <- mu/(sigma*1.5)^2
 p4 <- mu^2/(sigma*0.5)^2; lambda4 <- mu/(sigma*0.5)^2
-Phi<- cumsum(c(rgamma(1000,p1,lambda1),rgamma(500,p2,lambda2),
+Phi <- cumsum(c(rgamma(1000,p1,lambda1),rgamma(500,p2,lambda2),
 rgamma(500,p3,lambda3),rgamma(300,p4,lambda4)))
 # rcp  <- MFT.rate(Phi)$CP[,1] # MFT for the rates
 rcp <- c(30,37.5) # but here we assume known rate CPs
-MFT.variance(Phi,rcp=rcp) # MFT for the variances
+mft <- MFT.variance(Phi,rcp=rcp) # MFT for the variances
+plot(mft)
 
 }
 \references{
@@ -102,7 +80,7 @@ Multi-scale detection of variance changes in renewal processes in the presence o
 Journal of Time Series Analysis, <doi:10.1111/jtsa.12254>
 }
 \seealso{
-\code{\link{MFT.rate}, \link{MFT.mean}}
+\code{\link{MFT.rate}, \link{plot.MFT}, \link{summary.MFT}, \link{MFT.mean}, \link{MFT.peaks}}
 }
 \author{
 Michael Messer, Stefan Albert, Solveig Plomer and Gaby Schneider
