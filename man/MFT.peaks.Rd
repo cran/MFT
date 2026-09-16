@@ -4,10 +4,21 @@
 \alias{MFT.peaks}
 \title{MFT.peaks}
 \usage{
-MFT.peaks(x, autoset.H = TRUE, S = NULL, E = NULL, H = NULL,
-  alpha = 0.05, method = "asymptotic", sim = 10000, Q = NA,
-  blocksize = NA, two.sided = FALSE, perform.CPD = TRUE,
-  print.output = TRUE)
+MFT.peaks(
+  x,
+  autoset.H = TRUE,
+  S = NULL,
+  E = NULL,
+  H = NULL,
+  alpha = 0.05,
+  method = "asymptotic",
+  sim = 10000,
+  Q = NA,
+  blocksize = NA,
+  two.sided = FALSE,
+  perform.CPD = TRUE,
+  print.output = TRUE
+)
 }
 \arguments{
 \item{x}{numeric vector, input sequence of random variables}

@@ -4,9 +4,21 @@
 \alias{plot.MFT}
 \title{plot.MFT}
 \usage{
-\method{plot}{MFT}(x, col = NULL, ylab1 = NULL, ylab2 = NULL,
-  cex.legend = 1.2, cex.diamonds = 1.4, main = TRUE, plot.Q = TRUE,
-  plot.M = TRUE, plot.h = TRUE, breaks = NULL, wid = NULL, ...)
+\method{plot}{MFT}(
+  x,
+  col = NULL,
+  ylab1 = NULL,
+  ylab2 = NULL,
+  cex.legend = 1.2,
+  cex.diamonds = 1.4,
+  main = TRUE,
+  plot.Q = TRUE,
+  plot.M = TRUE,
+  plot.h = TRUE,
+  breaks = NULL,
+  wid = NULL,
+  ...
+)
 }
 \arguments{
 \item{x}{object of class MFT}

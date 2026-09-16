@@ -4,9 +4,20 @@
 \alias{MFT.mean}
 \title{MFT.mean}
 \usage{
-MFT.mean(X, autoset.H = TRUE, S = NULL, E = NULL, H = NULL,
-  alpha = 0.05, method = "asymptotic", sim = 10000,
-  rescale = FALSE, Q = NA, perform.CPD = TRUE, print.output = TRUE)
+MFT.mean(
+  X,
+  autoset.H = TRUE,
+  S = NULL,
+  E = NULL,
+  H = NULL,
+  alpha = 0.05,
+  method = "asymptotic",
+  sim = 10000,
+  rescale = FALSE,
+  Q = NA,
+  perform.CPD = TRUE,
+  print.output = TRUE
+)
 }
 \arguments{
 \item{X}{numeric vector, input sequence of random variables}

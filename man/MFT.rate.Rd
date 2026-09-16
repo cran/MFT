@@ -4,10 +4,24 @@
 \alias{MFT.rate}
 \title{MFT.rate}
 \usage{
-MFT.rate(Phi, m = 0, cutout = TRUE, autoset.d_H = TRUE, S = NULL,
-  E = NULL, d = NULL, H = NULL, alpha = 0.05,
-  method = "asymptotic", sim = 10000, rescale = FALSE, Q = NA,
-  blocksize = NA, perform.CPD = TRUE, print.output = TRUE)
+MFT.rate(
+  Phi,
+  m = 0,
+  cutout = TRUE,
+  autoset.d_H = TRUE,
+  S = NULL,
+  E = NULL,
+  d = NULL,
+  H = NULL,
+  alpha = 0.05,
+  method = "asymptotic",
+  sim = 10000,
+  rescale = FALSE,
+  Q = NA,
+  blocksize = NA,
+  perform.CPD = TRUE,
+  print.output = TRUE
+)
 }
 \arguments{
 \item{Phi}{numeric vector of increasing events, input point process}

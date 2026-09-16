@@ -4,10 +4,21 @@
 \alias{MFT.variance}
 \title{MFT.variance}
 \usage{
-MFT.variance(Phi, rcp = NULL, autoset.d_H = TRUE, S = NULL,
-  E = NULL, d = NULL, H = NULL, alpha = 0.05,
-  method = "asymptotic", sim = 10000, Q = NA, perform.CPD = TRUE,
-  print.output = TRUE)
+MFT.variance(
+  Phi,
+  rcp = NULL,
+  autoset.d_H = TRUE,
+  S = NULL,
+  E = NULL,
+  d = NULL,
+  H = NULL,
+  alpha = 0.05,
+  method = "asymptotic",
+  sim = 10000,
+  Q = NA,
+  perform.CPD = TRUE,
+  print.output = TRUE
+)
 }
 \arguments{
 \item{Phi}{numeric vector of increasing events, input point process}
